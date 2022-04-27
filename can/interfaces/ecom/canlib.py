@@ -313,7 +313,7 @@ class EcomBus(BusABC):
                 timestamp=msg.TimeStamp * self._tick_resl,
                 is_remote_frame=bool(msg.Options & 0x40),
                 is_extended_id=False,
-                arbitration_id=(msg.IDH << 8) & msg.IDL,
+                arbitration_id=(msg.IDH << 8) | msg.IDL,
                 dlc=msg.DataLength,
                 data=msg.Data,
                 channel=None,
