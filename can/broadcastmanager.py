@@ -134,6 +134,7 @@ class ThreadBasedCyclicSendTask(ModifiableCyclicTaskABC,
                 started = time.time()
                 try:
                     self.bus.send(self.message)
+                    log.info(f'Transmitted: {self.message}')
                 except Exception as exc:
                     log.exception(exc)
                     break
