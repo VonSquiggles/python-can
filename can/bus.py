@@ -12,6 +12,7 @@ import threading
 from time import time
 from collections import namedtuple
 from aenum import Enum, auto
+from .util import channel2int
 
 from .broadcastmanager import ThreadBasedCyclicSendTask
 
@@ -37,7 +38,7 @@ class BusABC(object):
     channel_info = 'unknown'
 
     #: Log level for received messages
-    RECV_LOGGING_LEVEL = 9
+    RECV_LOGGING_LEVEL = 60
 
     @abstractmethod
     def __init__(self, channel, can_filters=None, **kwargs):
@@ -84,7 +85,36 @@ class BusABC(object):
 
             # return it, if it matches
             if msg and (already_filtered or self._matches_filters(msg)):
-                LOG.log(self.RECV_LOGGING_LEVEL, 'Received: %s', msg)
+                
+                FORMAT_MESSAGE = "{channel}  {id:<15} Rx   {dtype} {data}"
+                channel = channel2int(msg.channel)
+                if msg.is_error_frame:
+                    self.log_event("{}  ErrorFrame".format(channel), msg.timestamp)
+                    return
+
+                if msg.is_remote_frame:
+                    dtype = 'r'
+                    data = []
+                else:
+                    dtype = "d {}".format(msg.dlc)
+                    data = ["{:02X}".format(byte) for byte in msg.data]
+
+                arb_id = "{:X}".format(msg.arbitration_id)
+                if msg.is_extended_id:
+                    arb_id += 'x'
+
+                if channel is None:
+                    channel = 0
+                else:
+                    # Many interfaces start channel numbering at 0 which is invalid
+                    channel += 1
+
+                serialized = FORMAT_MESSAGE.format(channel=channel,
+                                                    id=arb_id,
+                                                    dtype=dtype,
+                                                    data=' '.join(data))
+
+                LOG.log(self.RECV_LOGGING_LEVEL, serialized)
                 return msg
 
             # if not, and timeout is None, try indefinitely
