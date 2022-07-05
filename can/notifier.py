@@ -6,7 +6,7 @@ import asyncio
 import logging
 import threading
 import time
-from typing import Any, Callable, cast, Iterable, List, Optional, Union, Awaitable
+from typing import Callable, Iterable, List, Optional, Union, Awaitable
 
 from can.bus import BusABC
 from can.listener import Listener
@@ -14,7 +14,7 @@ from can.message import Message
 
 logger = logging.getLogger("can.Notifier")
 
-MessageRecipient = Union[Listener, Callable[[Message], None]]
+MessageRecipient = Union[Listener, Callable[[Message], Union[Awaitable[None], None]]]
 
 
 class Notifier:
@@ -71,6 +71,8 @@ class Notifier:
             # Bus doesn't support fileno, we fall back to thread based reader
             pass
 
+        # notify the bus that it has an active listener/notifier
+        bus.has_acv_notifier = True
         if self._loop is not None and reader >= 0:
             # Use bus file descriptor to watch for messages
             self._loop.add_reader(reader, self._on_message_available, bus)
@@ -119,7 +121,7 @@ class Notifier:
                             )
                         else:
                             self._on_message_received(msg)
-                msg = bus.recv(self.timeout)
+                msg = bus.recv(self.timeout, notifier=True)
         except Exception as exc:  # pylint: disable=broad-except
             self.exception = exc
             if self._loop is not None:
@@ -134,13 +136,13 @@ class Notifier:
                 logger.info("suppressed exception: %s", exc)
 
     def _on_message_available(self, bus: BusABC) -> None:
-        msg = bus.recv(0)
+        msg = bus.recv(0, notifier=True)
         if msg is not None:
             self._on_message_received(msg)
 
     def _on_message_received(self, msg: Message) -> None:
         for callback in self.listeners:
-            res = cast(Union[None, Optional[Awaitable[Any]]], callback(msg))
+            res = callback(msg)
             if res is not None and self._loop is not None and asyncio.iscoroutine(res):
                 # Schedule coroutine
                 self._loop.create_task(res)
@@ -166,7 +168,7 @@ class Notifier:
 
         return was_handled
 
-    def add_listener(self, listener: Listener) -> None:
+    def add_listener(self, listener: MessageRecipient) -> None:
         """Add new Listener to the notification list.
         If it is already present, it will be called two times
         each time a message arrives.
@@ -175,7 +177,7 @@ class Notifier:
         """
         self.listeners.append(listener)
 
-    def remove_listener(self, listener: Listener) -> None:
+    def remove_listener(self, listener: MessageRecipient) -> None:
         """Remove a listener from the notification list. This method
         throws an exception if the given listener is not part of the
         stored listeners.

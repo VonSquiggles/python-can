@@ -237,6 +237,12 @@ class EcomBus(BusABC):
             self._dev_hdl, constants.CAN_GET_MAX_TX_SIZE
         )
 
+        self._periodic_tasks = []
+        self.set_filters(can_filters)
+
+        # Call to super.
+        super().__init__(channel=None, can_filters=None, **kwargs)
+
     def send(self, msg: Message, timeout: Optional[float] = None) -> None:
         """Transmit a message to the CAN bus.
 
@@ -265,11 +271,6 @@ class EcomBus(BusABC):
             options |= 1 << 6
         if self._receive_own_messages:
             options |= 1 << 4
-        # TODO : account for dlc
-
-        # If the length of the message is not 8 bytes, append 0x00s until length is 8
-        # Ultimately, any appended bytes beyond specified dlc will not be transmitted
-        # anyway
         if len(msg.data) < 8:
             append_bytes = 8 - len(msg.data)
             for i in range(0, append_bytes):
