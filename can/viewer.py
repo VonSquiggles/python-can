@@ -29,13 +29,13 @@ import sys
 import time
 from typing import Dict, List, Tuple, Union
 
-import can
 from can import __version__
 from .logger import (
     _create_bus,
     _parse_filters,
     _append_filter_argument,
     _create_base_argument_parser,
+    _parse_additonal_config,
 )
 
 
@@ -52,7 +52,7 @@ except ImportError:
     curses = None  # type: ignore
 
 
-class CanViewer:
+class CanViewer:  # pylint: disable=too-many-instance-attributes
     def __init__(self, stdscr, bus, data_structs, testing=False):
         self.stdscr = stdscr
         self.bus = bus
@@ -88,7 +88,7 @@ class CanViewer:
         # Clear the terminal and draw the header
         self.draw_header()
 
-        while 1:
+        while True:
             # Do not read the CAN-Bus when in paused mode
             if not self.paused:
                 # Read the CAN-Bus and draw it in the terminal window
@@ -236,8 +236,11 @@ class CanViewer:
             self.ids[key]["count"] += 1
 
         # Format the CAN-Bus ID as a hex value
-        arbitration_id_string = "0x{0:0{1}X}".format(
-            msg.arbitration_id, 8 if msg.is_extended_id else 3
+        arbitration_id_string = (
+            "0x{0:0{1}X}".format(  # pylint: disable=consider-using-f-string
+                msg.arbitration_id,
+                8 if msg.is_extended_id else 3,
+            )
         )
 
         # Use red for error frames
@@ -262,7 +265,7 @@ class CanViewer:
             previous_byte_values = self.previous_values[key]
         except KeyError:  # no row of previous values exists for the current message ID
             # initialise a row to store the values for comparison next time
-            self.previous_values[key] = dict()
+            self.previous_values[key] = {}
             previous_byte_values = self.previous_values[key]
         for i, b in enumerate(msg.data):
             col = 52 + i * 3
@@ -278,7 +281,7 @@ class CanViewer:
                     else:
                         data_color = color
                 except KeyError:
-                    # previous entry for byte didnt exist - default to rest of line colour
+                    # previous entry for byte didn't exist - default to rest of line colour
                     data_color = color
                 finally:
                     # write the new value to the previous values dict for next time
@@ -299,6 +302,9 @@ class CanViewer:
                     else:
                         values_list.append(str(x))
                 values_string = " ".join(values_list)
+                self.ids[key]["values_string_length"] = len(values_string)
+                values_string += " " * (self.x - len(values_string))
+
                 self.draw_line(self.ids[key]["row"], 77, values_string, color)
             except (ValueError, struct.error):
                 pass
@@ -335,7 +341,7 @@ class CanViewer:
     def redraw_screen(self):
         # Trigger a complete redraw
         self.draw_header()
-        for key, ids in self.ids.items():
+        for ids in self.ids.values():
             self.draw_can_bus_message(ids["msg"])
 
 
@@ -480,7 +486,7 @@ def parse_args(args):
         parser.print_help(sys.stderr)
         raise SystemExit(errno.EINVAL)
 
-    parsed_args = parser.parse_args(args)
+    parsed_args, unknown_args = parser.parse_known_args(args)
 
     can_filters = _parse_filters(parsed_args)
 
@@ -534,15 +540,16 @@ def parse_args(args):
             else:
                 data_structs[key] = struct.Struct(fmt)
 
-    return parsed_args, can_filters, data_structs
+    additional_config = _parse_additonal_config(unknown_args)
+    return parsed_args, can_filters, data_structs, additional_config
 
 
 def main() -> None:
-    parsed_args, can_filters, data_structs = parse_args(sys.argv[1:])
+    parsed_args, can_filters, data_structs, additional_config = parse_args(sys.argv[1:])
 
-    additional_config = {"can_filters": can_filters} if can_filters else {}
+    if can_filters:
+        additional_config.update({"can_filters": can_filters})
     bus = _create_bus(parsed_args, **additional_config)
-    # print(f"Connected to {bus.__class__.__name__}: {bus.channel_info}")
 
     curses.wrapper(CanViewer, bus, data_structs)
 

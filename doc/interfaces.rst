@@ -12,12 +12,15 @@ The available interfaces are:
    :maxdepth: 1
 
    interfaces/canalystii
+<<<<<<< HEAD
    interfaces/ecom
+=======
+   interfaces/etas
+>>>>>>> remotes/python-can/develop
    interfaces/gs_usb
    interfaces/iscan
    interfaces/ixxat
    interfaces/kvaser
-   interfaces/udp_multicast
    interfaces/neovi
    interfaces/nican
    interfaces/nixnet
@@ -28,6 +31,7 @@ The available interfaces are:
    interfaces/slcan
    interfaces/socketcan
    interfaces/systec
+   interfaces/udp_multicast
    interfaces/usb2can
    interfaces/vector
    interfaces/virtual
@@ -48,4 +52,3 @@ The format of the entry point is ``interface_name=module:classname`` where
 
 
 The *Interface Names* are listed in :doc:`configuration`.
-
