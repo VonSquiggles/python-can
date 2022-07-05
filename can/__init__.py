@@ -8,11 +8,7 @@ messages on a can bus.
 import logging
 from typing import Dict, Any
 
-<<<<<<< HEAD
 __version__ = "4.0.0-dev.11"
-=======
-__version__ = "4.0.0"
->>>>>>> remotes/python-can/develop
 
 log = logging.getLogger("can")
 

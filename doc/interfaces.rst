@@ -12,11 +12,8 @@ The available interfaces are:
    :maxdepth: 1
 
    interfaces/canalystii
-<<<<<<< HEAD
    interfaces/ecom
-=======
    interfaces/etas
->>>>>>> remotes/python-can/develop
    interfaces/gs_usb
    interfaces/iscan
    interfaces/ixxat

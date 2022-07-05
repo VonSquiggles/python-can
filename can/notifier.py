@@ -106,16 +106,8 @@ class Notifier:
                 # reader is a file descriptor
                 self._loop.remove_reader(reader)
         for listener in self.listeners:
-<<<<<<< HEAD
-            if hasattr(listener, "stop"):
-                listener.stop()
-        for each_bus in self.bus if isinstance(self.bus, list) else [self.bus]:
-            # deactivate notifier flag
-            each_bus.has_acv_notifier = False
-=======
             # Mypy prefers this over a hasattr(...) check
             getattr(listener, "stop", lambda: None)()
->>>>>>> remotes/python-can/develop
 
     def _rx_thread(self, bus: BusABC) -> None:
         msg = None
